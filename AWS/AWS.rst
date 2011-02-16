@@ -97,11 +97,108 @@ EC2 Overview
 * CPU, HDD, network, DNS, SSH
 
 
-Deployment
-==========
+
+Automated deployment
+====================
 
 * fabric
+ - python ssh wrapper
+ - deployment tool
+* boto
+ - AWS rest API wrapper
 * knitting
+ - fabric + boto + magic
+
+
+Knitting Definitions
+====================
+
+Defines:
+
+* Cluster
+* Machines
+* Roles
+* Firewall
+* Deployment scenarios
+
+
+Knitting Definitions (cluster)
+==============================
+
+.. code-block:: python
+
+  definition = {
+      'production.mysite': {
+          'tags': {
+                  'Stage': 'Production',
+                  'Product': 'MySite',
+              },
+          'region': 'eu-west-1',
+          'zone': 'eu-west-1a',
+          'key_name': 'master_key',
+          'credentials_file': os.path.expanduser('~/.ec2/aws.ini'),
+          'domain': 'production.mysite',
+
+Knitting Definitions (machines+roles)
+=====================================
+
+.. code-block:: python
+
+          'machines': {
+              'frontend': {
+                  'ami': 'ami-d19ca9a5',
+                  'instance': 'm1.large',
+                  'security_group': 'webserver',
+                  'class': Machine,
+                  'roles': {
+                      'proxy': Proxy(sites=['nginx/mysite/proxy'],),
+                      'django': MySite(),
+                  }
+              },
+              'db': {
+                  ...
+                  'roles': {
+                      'memcache': Memcache(unix_socket=False,),
+                      'redis': Redis(),
+                      'postgres': BouncedPostgres(
+                          db_name='mysite', user='mysite', unix_socket=False, max_db_connections=4096,
+                          trust_users=['postgres', 'mysite'], max_bouncer_connections=8192,
+                      ),
+                  }
+              },
+
+Knitting Definitions (scenarios)
+================================
+.. code-block:: python
+
+    'deploy': [
+        'proxy.site_down',
+        'ALL.update',
+        'django.migrate',
+        'django.static',
+        'memcache.restart',
+        'proxy.site_up',
+    ],
+    'hotfix': [
+        'django.update',
+        'proxy.repload',
+    ],
+
+Knitting commands
+=================
+
+Launch machines::
+
+    fab mysite_production launch
+
+Install machines::
+
+    fab mysite_production install
+
+Run tasks::
+
+    fab mysite_production deploy
+    fab mysite_production hotfix
 
 
 Cons
