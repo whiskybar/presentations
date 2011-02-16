@@ -121,6 +121,12 @@ Defines:
 * Firewall
 * Deployment scenarios
 
+Knitting Architecture
+=====================
+
+.. image:: knitting.png
+   :width: 70%
+
 
 Knitting Definitions (cluster)
 ==============================
