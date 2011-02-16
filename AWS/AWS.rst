@@ -187,7 +187,7 @@ Knitting Definitions (scenarios)
     ],
     'hotfix': [
         'django.update',
-        'proxy.repload',
+        'proxy.reload',
     ],
 
 Knitting commands
