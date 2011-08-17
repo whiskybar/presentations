@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="generator" content="rst2slides 0.2.2" /><title></title>
+<link rel="stylesheet" href="ui/styles.css" />
+<link rel="stylesheet" href="ui/pygments_style.css" />
+<link rel="stylesheet" href="ui/user.css" />
+</head>
+<body>
+
+    <header>
+    <nav>
+        <ul>
+            <li><button id="prev-btn" title="Previous slide">Previous Slide</button></li>
+            <li><span id="slide-number"></span>/<span id="slide-total"></span></li>
+            <li><button id="next-btn" title="Next Slide">Next Slide</button></li>
+        </ul>
+    </nav>
+    </header>
+
+<div id='deck'>
+
+
+<section>
+<hgroup>
+    <h1>
+Redis to Find Spammers    </h1>
+</hgroup>
+<p>2011-08-17 Jiří Bartoň</p>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Problem    </h1>
+</hgroup>
+<pre class="literal-block">
+Subject:    [Casablanca RT #105973] Email Feedback Report for IP 81.0.217.100
+Date:   Wed, 13 Jul 2011 07:30:32 +0200
+From:   Robert Grohol via Casablanca INT RequestTracker &lt;rt&#64;casablanca.cz&gt;
+Reply-To:   rt&#64;casablanca.cz
+To:     info&#64;tele3.cz
+
+
+Vážený uživateli sítě Casablanca INT,
+
+níže přikládáme stížnost, která nám byla doručena a ve které je
+uvedeno, že z vám přidělené IP adresy odchází nevyžádaná pošta
+(tzv. spam). Znamená ...
+</pre>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Infrastructure    </h1>
+</hgroup>
+<p>RewriteRule ^(.*) /var/www/hosting/${lowercase:%{SERVER_NAME}}$1</p>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Solution    </h1>
+</hgroup>
+<ul class="simple">
+<li>Redis Sorted Sets!</li>
+<li>smtp.www --&gt; domain1.com: 50, domain2.com: 73, etc.</li>
+<li>ZREVRANGE</li>
+</ul>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Apache    </h1>
+</hgroup>
+<pre class="literal-block">
+&lt;Directory /var/www/hosting/adamis.cz&gt;
+        php_admin_value sendmail_path &quot;/usr/local/bin/sendmail_log adamis.cz&quot;
+&lt;/Directory&gt;
+
+&lt;Directory /var/www/hosting/adoma.cz&gt;
+        php_admin_value sendmail_path &quot;/usr/local/bin/sendmail_log adoma.cz&quot;
+&lt;/Directory&gt;
+
+&lt;Directory /var/www/hosting/adorah.cz&gt;
+        php_admin_value sendmail_path &quot;/usr/local/bin/sendmail_log adorah.cz&quot;
+&lt;/Directory&gt;
+
+...
+</pre>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Log Message Count    </h1>
+</hgroup>
+<div class="highlight"><pre><span class="c">#!/usr/bin/env python</span>
+
+<span class="kn">import</span> <span class="nn">redis</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+
+<span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="s">&#39;/usr/sbin/sendmail&#39;</span><span class="p">,</span> <span class="s">&#39;-t&#39;</span><span class="p">])</span>
+
+<span class="n">rd</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">Redis</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s">&#39;redis.tele3.cz&#39;</span><span class="p">)</span>
+<span class="n">rd</span><span class="o">.</span><span class="n">zincrby</span><span class="p">(</span><span class="s">&#39;smtp.www&#39;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+View Spammers    </h1>
+</hgroup>
+<pre class="literal-block">
+$ redis-cli zrevrange smtp.www 0 10 withscores
+
+1. &quot;ivtt.net&quot;
+2. &quot;1650&quot;
+3. &quot;cesky-volejbal.cz&quot;
+4. &quot;135&quot;
+5. &quot;pohaservis.cz&quot;
+6. &quot;115&quot;
+7. &quot;ais-wd.cz&quot;
+8. &quot;88&quot;
+...
+</pre>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+redis2-nginx-module    </h1>
+</hgroup>
+<p><a class="reference external" href="http://wiki.nginx.org/3rdPartyModules">http://wiki.nginx.org/3rdPartyModules</a></p>
+<pre class="literal-block">
+server {
+    server_name     smtpstats.tele3.cz;
+
+    access_log  /var/log/nginx/smtpstats.access.log;
+    root /var/www/smtpstats;
+    index index.html;
+
+    location /top {
+        redis2_query zrevrange smtp.www 0 10 withscores;
+        redis2_pass 127.0.0.1:6379;
+    }
+}
+</pre>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+redis2-nginx-module output    </h1>
+</hgroup>
+<p><a class="reference external" href="http://smtpstats.tele3.cz/top">http://smtpstats.tele3.cz/top</a></p>
+<pre class="literal-block">
+*22
+$8
+ivtt.net
+$4
+1644
+$17
+cesky-volejbal.cz
+$3
+135
+$13
+pohaservis.cz
+$3
+115
+...
+</pre>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Webpage    </h1>
+</hgroup>
+<p><a class="reference external" href="http://smtpstats.tele3.cz/top">http://smtpstats.tele3.cz/top</a></p>
+<img alt="chart.png" src="chart.png" style="width: 70%;" />
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Statistics per day, etc.    </h1>
+</hgroup>
+<p>Use redis keys like this:</p>
+<ul class="simple">
+<li>smtp.www.2011-08-17</li>
+<li>smtp.www.2011-08-17-20</li>
+</ul>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Webpage Source    </h1>
+</hgroup>
+<div class="highlight"><pre><span class="nt">&lt;html&gt;</span>
+<span class="nt">&lt;head&gt;</span>
+<span class="nt">&lt;script </span><span class="na">src=</span><span class="s">&quot;http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js&quot;</span> <span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+<span class="nt">&lt;script </span><span class="na">src=</span><span class="s">&quot;/js/highcharts.js&quot;</span> <span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+
+<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
+<span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">ready</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="nx">chart</span><span class="o">:</span> <span class="p">{</span>
+            <span class="nx">renderTo</span><span class="o">:</span> <span class="s1">&#39;chart&#39;</span><span class="p">,</span>
+            <span class="nx">type</span><span class="o">:</span> <span class="s1">&#39;bar&#39;</span>
+        <span class="p">},</span>
+        <span class="nx">title</span><span class="o">:</span> <span class="p">{</span>
+            <span class="nx">text</span><span class="o">:</span> <span class="kc">null</span>
+        <span class="p">},</span>
+        <span class="nx">xAxis</span><span class="o">:</span> <span class="p">{</span>
+            <span class="nx">categories</span><span class="o">:</span> <span class="p">[]</span>
+        <span class="p">},</span>
+        <span class="nx">yAxis</span><span class="o">:</span> <span class="p">{</span>
+            <span class="nx">title</span><span class="o">:</span> <span class="p">{</span>
+                <span class="nx">text</span><span class="o">:</span> <span class="kc">null</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="nx">series</span><span class="o">:</span> <span class="p">[{</span>
+            <span class="nx">name</span><span class="o">:</span> <span class="s1">&#39;messages&#39;</span><span class="p">,</span>
+            <span class="nx">data</span><span class="o">:</span> <span class="p">[]</span>
+        <span class="p">}]</span>
+    <span class="p">};</span>
+    <span class="nx">$</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;/top&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kd">var</span> <span class="nx">label</span><span class="p">;</span>
+        <span class="kd">var</span> <span class="nx">value</span><span class="p">;</span>
+        <span class="nx">$</span><span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="nx">d</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;\r\n&#39;</span><span class="p">),</span> <span class="kd">function</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">e</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">((</span><span class="nx">i</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="c1">//label</span>
+                <span class="nx">label</span> <span class="o">=</span> <span class="nx">e</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">else</span> <span class="k">if</span> <span class="p">((</span><span class="nx">i</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span> <span class="c1">//value</span>
+                <span class="nx">value</span> <span class="o">=</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">e</span><span class="p">);</span>
+                <span class="k">if</span> <span class="p">(</span><span class="nx">label</span> <span class="o">!=</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="nx">options</span><span class="p">.</span><span class="nx">xAxis</span><span class="p">.</span><span class="nx">categories</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">label</span><span class="p">);</span>
+                    <span class="nx">options</span><span class="p">.</span><span class="nx">series</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">data</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">value</span><span class="p">);</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">});</span>
+        <span class="k">new</span> <span class="nx">Highcharts</span><span class="p">.</span><span class="nx">Chart</span><span class="p">(</span><span class="nx">options</span><span class="p">);</span>
+    <span class="p">});</span>
+<span class="p">});</span>
+<span class="nt">&lt;/script&gt;</span>
+
+<span class="nt">&lt;/head&gt;</span>
+<span class="nt">&lt;body&gt;</span>
+<span class="nt">&lt;h1&gt;&lt;center&gt;</span>Top Ten Domains by Message Count<span class="nt">&lt;/center&gt;&lt;/h1&gt;</span>
+<span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">&quot;chart&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
+<span class="nt">&lt;/body&gt;</span>
+<span class="nt">&lt;/html&gt;</span>
+</pre></div>
+  </section>
+</div>
+
+
+        <script src="ui/jquery-1.4.2.min.js"></script>
+        <script src="ui/htmlSlides.js"></script>
+        </body>
+</html>

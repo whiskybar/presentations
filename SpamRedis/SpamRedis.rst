@@ -1,6 +1,9 @@
 Redis to Find Spammers
 ======================
 
+2011-08-17 Jiří Bartoň
+
+
 Problem
 =======
 
@@ -23,11 +26,15 @@ Problem
 Infrastructure
 ==============
 
+RewriteRule ^(.*) /var/www/hosting/${lowercase:%{SERVER_NAME}}$1
+
 
 Solution
 ========
 
-
+* Redis Sorted Sets!
+* smtp.www --> domain1.com: 50, domain2.com: 73, etc.
+* ZREVRANGE
 
 
 Apache
@@ -53,7 +60,7 @@ Apache
 Log Message Count
 =================
 
-:: code-block: python
+.. code-block:: python
 
     #!/usr/bin/env python
     
@@ -126,38 +133,7 @@ http://smtpstats.tele3.cz/top
     pohaservis.cz
     $3
     115
-    $9
-    ais-wd.cz
-    $2
-    88
-    $9
-    koziol.cz
-    $2
-    60
-    $12
-    trebonsko.cz
-    $2
-    55
-    $15
-    rainydazeee.com
-    $2
-    12
-    $12
-    diskoduck.cz
-    $2
-    12
-    $20
-    paragliding-skola.cz
-    $1
-    5
-    $12
-    kozimleko.cz
-    $1
-    4
-    $9
-    aromka.cz
-    $1
-    4
+    ...
 
 
 Webpage
@@ -167,6 +143,15 @@ http://smtpstats.tele3.cz/top
 
 .. image:: chart.png
    :width: 70%
+
+
+Statistics per day, etc.
+========================
+
+Use redis keys like this:
+
+* smtp.www.2011-08-17
+* smtp.www.2011-08-17-20
 
 
 Webpage Source
