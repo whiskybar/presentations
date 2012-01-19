@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="generator" content="rst2slides 0.3" /><title></title>
+<link rel="stylesheet" href="ui/styles.css" />
+<link rel="stylesheet" href="ui/pygments_style.css" />
+<link rel="stylesheet" href="ui/user.css" />
+</head>
+<body>
+
+    <header>
+    <nav>
+        <ul>
+            <li><button id="prev-btn" title="Previous slide">Previous Slide</button></li>
+            <li><span id="slide-number"></span>/<span id="slide-total"></span></li>
+            <li><button id="next-btn" title="Next Slide">Next Slide</button></li>
+        </ul>
+    </nav>
+    </header>
+
+<div id='deck'>
+
+
+<section>
+<hgroup>
+    <h1>
+Profiling Django/Python Applications    </h1>
+</hgroup>
+<p><a class="reference external" href="http://lurkingideas.net/profiling-django-projects-cachegrind/">http://lurkingideas.net/profiling-django-projects-cachegrind/</a></p>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+It's slow    </h1>
+</hgroup>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+DEBUG = False    </h1>
+</hgroup>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+.    </h1>
+</hgroup>
+<img alt="scope.jpg" src="scope.jpg" />
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+SQL slow    </h1>
+</hgroup>
+<ul class="simple">
+<li>django-toolbar</li>
+<li>SQL slow log</li>
+</ul>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Code slow    </h1>
+</hgroup>
+<ul>
+<li><dl class="first docutils">
+<dt>time.time</dt>
+<dd><ul class="first last simple">
+<li>&#64;, with</li>
+<li>input: cookie</li>
+<li>output: headers, pastebin, js.console?</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Code slow    </h1>
+</hgroup>
+<div class="highlight"><pre><span class="k">def</span> <span class="nf">profile</span><span class="p">(</span><span class="nb">file</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+
+    <span class="kn">from</span> <span class="nn">hotshot</span> <span class="kn">import</span> <span class="n">Profile</span>
+    <span class="kn">from</span> <span class="nn">hotshot.stats</span> <span class="kn">import</span> <span class="n">load</span>
+    <span class="kn">from</span> <span class="nn">tempfile</span> <span class="kn">import</span> <span class="n">mkstemp</span>
+    <span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">unlink</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">file</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">stdout</span> <span class="k">as</span> <span class="nb">file</span>
+
+    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">wrapped</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">prof</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">prof</span><span class="o">.</span><span class="n">runcall</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">prof</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+            <span class="n">stats</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="n">stats</span><span class="o">.</span><span class="n">stream</span> <span class="o">=</span> <span class="nb">file</span>
+            <span class="n">stats</span><span class="o">.</span><span class="n">strip_dirs</span><span class="p">()</span>
+            <span class="n">stats</span><span class="o">.</span><span class="n">sort_stats</span><span class="p">(</span><span class="s">&#39;time&#39;</span><span class="p">,</span> <span class="s">&#39;calls&#39;</span><span class="p">)</span>
+
+            <span class="k">print</span> <span class="o">&gt;&gt;</span><span class="nb">file</span><span class="p">,</span> <span class="s">&#39;    Statistics for:&#39;</span><span class="p">,</span> <span class="n">func</span><span class="o">.</span><span class="n">__name__</span>
+            <span class="k">print</span> <span class="o">&gt;&gt;</span><span class="nb">file</span>
+            <span class="n">stats</span><span class="o">.</span><span class="n">print_stats</span><span class="p">()</span>
+
+            <span class="n">unlink</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="k">return</span> <span class="n">wrapped</span>
+
+    <span class="k">return</span> <span class="n">call</span>
+</pre></div>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Code slow    </h1>
+</hgroup>
+<pre class="literal-block">
+. Statistics for: by_tag
+
+       11002 function calls (10335 primitive calls) in 0.187 CPU seconds
+
+ Ordered by: internal time, call count
+
+ ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     12    0.007    0.001    0.008    0.001 base.py:231(execute)
+   12/2    0.005    0.000    0.128    0.064 defaulttags.py:177(render)
+   80/1    0.005    0.000    0.137    0.137 base.py:740(render)
+873/865    0.005    0.000    0.007    0.000 encoding.py:54(force_unicode)
+  38/30    0.005    0.000    0.027    0.001 importlib.py:18(import_module)
+ 283/88    0.005    0.000    0.012    0.000 copy.py:144(deepcopy)
+...
+</pre>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Cachegrind    </h1>
+</hgroup>
+<p><a class="reference external" href="http://lurkingideas.net/profiling-django-projects-cachegrind/">http://lurkingideas.net/profiling-django-projects-cachegrind/</a></p>
+<img alt="kcachegrind-small.png" class="align-left" src="kcachegrind-small.png" />
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Cachegrind - middleware    </h1>
+</hgroup>
+<div class="highlight"><pre><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">import</span> <span class="nn">cProfile</span>
+
+
+<span class="k">class</span> <span class="nc">InstrumentMiddleware</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s">&#39;profile&#39;</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">COOKIES</span><span class="p">:</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">profiler</span> <span class="o">=</span> <span class="n">cProfile</span><span class="o">.</span><span class="n">Profile</span><span class="p">()</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">profiler</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s">&#39;profiler&#39;</span><span class="p">):</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">profiler</span><span class="o">.</span><span class="n">disable</span><span class="p">()</span>
+            <span class="n">stamp</span> <span class="o">=</span> <span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">META</span><span class="p">[</span><span class="s">&#39;REMOTE_ADDR&#39;</span><span class="p">],</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">profiler</span><span class="o">.</span><span class="n">dump_stats</span><span class="p">(</span><span class="s">&#39;/tmp/</span><span class="si">%s</span><span class="s">-</span><span class="si">%s</span><span class="s">.pro&#39;</span> <span class="o">%</span> <span class="n">stamp</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span>
+</pre></div>
+  </section>
+
+<section>
+<hgroup>
+    <h1>
+Cachegrind - process output    </h1>
+</hgroup>
+<p>kcachegrind, pyprof2calltree</p>
+<pre class="literal-block">
+pyprof2calltree -i 123.124.125.126-2011-01-19\ 18\:49\:35.134598.pro -k
+.
+</pre>
+<img alt="kcachegrind-small.png" class="align-left" src="kcachegrind-small.png" />
+  </section>
+</div>
+
+
+        <script src="ui/jquery-1.4.2.min.js"></script>
+        <script src="ui/htmlSlides.js"></script>
+        </body>
+</html>
